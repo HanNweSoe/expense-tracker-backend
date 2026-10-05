@@ -1,14 +1,30 @@
-import { Pool } from 'pg';
+import { Pool, type PoolConfig } from 'pg';
 import { env } from './env';
 
-export const db = new Pool({
-  host: env.DB_HOST,
-  port: env.DB_PORT,
-  database: env.DB_NAME,
-  user: env.DB_USER,
-  password: env.DB_PASSWORD,
-  ssl: { rejectUnauthorized: false },
-});
+const isLocalHost = (host: string) =>
+  host === 'localhost' || host === '127.0.0.1' || host === '::1';
+
+const sslConfig = env.DATABASE_URL
+  ? { rejectUnauthorized: false }
+  : isLocalHost(env.DB_HOST)
+    ? false
+    : { rejectUnauthorized: false };
+
+const poolConfig: PoolConfig = env.DATABASE_URL
+  ? {
+      connectionString: env.DATABASE_URL,
+      ssl: sslConfig,
+    }
+  : {
+      host: env.DB_HOST,
+      port: env.DB_PORT,
+      database: env.DB_NAME,
+      user: env.DB_USER,
+      password: env.DB_PASSWORD,
+      ssl: sslConfig,
+    };
+
+export const db = new Pool(poolConfig);
 
 export const initializeDatabase = async () => {
   await db.query('BEGIN');
